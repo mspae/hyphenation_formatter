@@ -1,0 +1,5 @@
+name = Hyphenator Formatter
+description = Adds soft hyphens as HTML entities to enable Browser based hyphenation
+package = "Input filters"
+core = 7.x
+;files[] = phpHyphenation/phpHyphenation.class.php

@@ -1,0 +1,130 @@
+<?php
+
+/**
+ * Implements hook_filter_info().
+ */
+function hyphenator_formatter_filter_info() {
+  return array(
+    'hyphenator_formatter' => array(
+      'title' => t('Hyphenate text'),
+      'description' => t('Adds soft hyphens as HTML entities to enable Browser based hyphenation.'),
+      'process callback' => '_hyphenator_formatter_process',
+      'settings callback' => '_hyphenator_formatter_settings',
+      'default settings' => array(
+        'hyphen' => '&shy;',
+        'leftmin' => 2,
+        'rightmin' => 2,
+        'charmin' => 2,
+        'charmax' => 10,
+        'exclude_tags' => '<code> <pre> <script> <style>'
+      ),
+      'tips callback' => '_hyphenator_formatter_tips'
+    )
+  );
+}
+
+
+/**
+ * Implements callback_filter_process().
+ *
+ * Provides filtering of input into accepted HTML.
+ */
+function _hyphenator_formatter_process($text, $filter, $format, $langcode, $cache, $cache_id) {
+  global $language;
+
+  module_load_include('class.php', 'hyphenator_formatter', 'phpHyphenation/phpHyphenation');
+
+  $langcode = ($langcode == 'und')
+    ? $language->language
+    : $langcode;
+
+  $exclude_tags = preg_split('/\s+|<|>/', $filter->settings['exclude_tags'], -1, PREG_SPLIT_NO_EMPTY);
+  $path = DRUPAL_ROOT . '/' . drupal_get_path('module', 'hyphenator_formatter') . '/phpHyphenation/patterns/';
+
+  phpHyphenation::setPatternPath($path);
+  $hyph = new phpHyphenation($langcode);
+
+  if ($hyph === false) {
+    return;
+  }
+
+  $hyph->setIgnoreTags($exclude_tags);
+  $hyph->setHyphen($filter->settings['hyphen']);
+  $hyph->setConstraints($filter->settings['leftmin'], $filter->settings['rightmin'], $filter->settings['charmin'], $filter->settings['charmax']);
+  return $hyph->doHyphenation($text);
+}
+
+
+/**
+ * Implements callback_filter_settings().
+ *
+ * Filter settings callback for the HTML content filter.
+ */
+function _hyphenator_formatter_settings($form, &$form_state, $filter, $format, $defaults, $filters) {
+  $filter->settings += $defaults;
+
+  $elements = array();
+  $number_array = array();
+  for ($i = 0; $i < 20; $i++) {
+    $number_array[$i] = $i;
+  }
+
+  $elements['hyphen'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Entity or single character for hyphenation.'),
+    '#default_value' => $filter->settings['hyphen'],
+  );
+
+  $elements['leftmin'] = array(
+    '#type' => 'select',
+    '#title' => t('Minimum characters before a hyphen'),
+    '#default_value' => $filter->settings['leftmin'],
+    '#options' => $number_array
+  );
+
+  $elements['rightmin'] = array(
+    '#type' => 'select',
+    '#title' => t('Maximum characters after a hyphen'),
+    '#default_value' => $filter->settings['rightmin'],
+    '#options' => $number_array
+  );
+
+  $elements['charmin'] = array(
+    '#type' => 'select',
+    '#title' => t('Minimum character length of a word'),
+    '#default_value' => $filter->settings['charmin'],
+    '#options' => $number_array
+  );
+
+  $elements['charmax'] = array(
+    '#type' => 'select',
+    '#title' => t('Maximum character length of a word'),
+    '#default_value' => $filter->settings['charmax'],
+    '#options' => $number_array
+  );
+
+  $elements['exclude_tags'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Tags to be excluded from hyphenation'),
+    '#default_value' => $filter->settings['exclude_tags']
+  );
+
+  return $elements;
+}
+
+/**
+ * Implements callback_filter_tips().
+ *
+ * Provides help for the HTML filter.
+ *
+ * @see filter_filter_info()
+ */
+function _hyphenator_formatter_tips($filter, $format, $long = FALSE) {
+  $output = t('Text will be hyphenated');
+
+  if (($exclude_tags = $filter->settings['exclude_tags'])) {
+    $output .= '</li><li>' . t('The following HTML tags will not be hyphenated: @tags', array('@tags' => $exclude_tags)) . '</li>';
+  }
+
+  return $output;
+}
