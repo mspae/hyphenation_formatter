@@ -1,4 +1,11 @@
 <?php
+/**
+ * @file
+ * Hyphenator formatter module
+ *
+ * Provides a text filter to add soft hyphen HTML entities for improved text
+ * flow by using the phpHyphenation library
+ */
 
 /**
  * Implements hook_filter_info().
@@ -44,7 +51,7 @@ function _hyphenator_formatter_process($text, $filter, $format, $langcode, $cach
   phpHyphenation::setPatternPath($path);
   $hyph = new phpHyphenation($langcode);
 
-  if ($hyph === false) {
+  if ($hyph === FALSE) {
     return;
   }
 
